@@ -409,13 +409,15 @@ public final class Util {
     int firstword = start / 64;
     int endword = (end - 1) / 64;
     if (firstword == endword) {
-      return Long.bitCount(bitmap[firstword] & ((~0L << start) & (~0L >>> -end)));
+      long startMask = ~0L << start;
+      long endMask = ~0L >>> (63 - ((end - 1) & 63));
+      return Long.bitCount(bitmap[firstword] & startMask & endMask);
     }
     int answer = Long.bitCount(bitmap[firstword] & (~0L << start));
     for (int i = firstword + 1; i < endword; i++) {
       answer += Long.bitCount(bitmap[i]);
     }
-    answer += Long.bitCount(bitmap[endword] & (~0L >>> -end));
+    answer += Long.bitCount(bitmap[endword] & (~0L >>> (63 - ((end - 1) & 63))));
     return answer;
   }
 
@@ -682,11 +684,24 @@ public final class Util {
    */
   public static int unsignedBinarySearch(
       final char[] array, final int begin, final int end, final char k) {
-    if (USE_HYBRID_BINSEARCH) {
-      return hybridUnsignedBinarySearch(array, begin, end, k);
-    } else {
-      return branchyUnsignedBinarySearch(array, begin, end, k);
+    final int kInt = k; // Convert once to avoid repeated casts
+    int low = begin;
+    int high = end - 1;
+    
+    while (low <= high) {
+      final int middleIndex = (low + high) >>> 1;
+      final int middleValue = array[middleIndex];
+
+      if (middleValue < kInt) {
+        low = middleIndex + 1;
+      } else if (middleValue > kInt) {
+        high = middleIndex - 1;
+      } else {
+        return middleIndex;
+      }
     }
+    
+    return -(low + 1);
   }
 
   /**
